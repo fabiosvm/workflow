@@ -14,6 +14,12 @@
 import type { ComponentType } from 'react'
 import type { z } from 'zod'
 
+/** A problem only the node itself can see. */
+export interface NodeIssue {
+  level: 'error' | 'warning'
+  message: string
+}
+
 /** A connection point. Branching nodes declare more than one output. */
 export interface NodeHandleDefinition {
   /** Referenced by `WorkflowConnection.sourceHandle`. */
@@ -117,6 +123,14 @@ export interface NodeDefinition {
     | ((params: Record<string, unknown>) => NodeHandleDefinition[])
   paramsSchema: z.ZodObject
   fields: NodeField[]
+  /**
+   * Problems the schema cannot express: a reference to something outside the
+   * graph, a credential that no longer exists. Runs with the graph diagnostics
+   * rather than with the schema, so what it returns lights the node's warning,
+   * joins the count in the header and shows on hover — for any pack, with no
+   * code in the core.
+   */
+  validate?: (params: Record<string, unknown>) => NodeIssue[]
   appearance?: NodeAppearance
 }
 

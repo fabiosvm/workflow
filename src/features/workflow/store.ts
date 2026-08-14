@@ -112,9 +112,10 @@ interface WorkflowState {
   isDirty: boolean
   isSaving: boolean
   /**
-   * Recomputed only on structural mutations. Dragging replaces the `nodes`
-   * array every frame but never changes topology, so it is deliberately not a
-   * trigger for revalidation.
+   * Recomputed on structural mutations and on configuration changes — a node
+   * can report a problem its schema cannot state, and that problem moves with
+   * its params. Dragging is the one mutation left out: it replaces the `nodes`
+   * array every frame and can change neither topology nor configuration.
    */
   validation: GraphValidation
   past: Snapshot[]
@@ -147,7 +148,7 @@ interface WorkflowState {
   commit: (tag?: string) => void
   undo: () => void
   redo: () => void
-  /** Called by every mutation that can change graph topology. */
+  /** Called by every mutation that can change topology or configuration. */
   revalidate: () => void
   save: () => Promise<void>
 }
@@ -354,6 +355,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       ),
       isDirty: true,
     }))
+
+    // Params carry diagnostics of their own, so a keystroke in the config panel
+    // can change what is wrong with the graph.
+    get().revalidate()
   },
 
   updateWorkflowMeta: (patch) => {

@@ -10,8 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useWorkflowStore } from '@/features/workflow/store'
 import {
+  checkedPack,
   installTestRegistry,
   makeWorkflow,
+  testChecked,
   testTrigger,
 } from '@/features/workflow/test-support'
 
@@ -22,7 +24,7 @@ const fixture = () =>
   makeWorkflow([{ id: 't', type: testTrigger.type }, { id: 'a' }], ['t>a'])
 
 beforeEach(() => {
-  installTestRegistry()
+  installTestRegistry(checkedPack)
   // `loadWorkflow` is also what resets the module-level coalescing tag, so it
   // has to run between tests or a tag can leak across cases.
   store().loadWorkflow(fixture())
@@ -101,6 +103,28 @@ describe('removal', () => {
     // The trigger is gone, so the graph now has no starting point.
     expect(store().validation.all).toHaveLength(1)
     expect(store().validation.all[0].level).toBe('error')
+  })
+
+  /**
+   * Configuration is not topology, so this used to be left out of
+   * revalidation. It cannot be: a node reports problems of its own from its
+   * params, and typing in the config panel is how those params change.
+   */
+  it('revalidates after a configuration change', () => {
+    store().loadWorkflow(
+      makeWorkflow(
+        [
+          { id: 't', type: testTrigger.type },
+          { id: 'a', type: testChecked.type, params: { ref: 'here' } },
+        ],
+        ['t>a'],
+      ),
+    )
+    expect(store().validation.all).toEqual([])
+
+    store().updateNodeData('a', { params: { ref: 'gone' } })
+
+    expect(store().validation.byNode.get('a')).toHaveLength(1)
   })
 })
 

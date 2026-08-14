@@ -103,6 +103,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
         set({ workflows: remaining })
 
         if (activeId !== id) {
+          // The open workflow may hold a node pointing at what just went away.
+          // Nothing mutated its graph, so only an explicit pass surfaces that.
+          useWorkflowStore.getState().revalidate()
+
           return
         }
 

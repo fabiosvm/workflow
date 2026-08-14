@@ -75,12 +75,39 @@ export const testPack: NodePack = {
   nodes: [testTrigger, testAction, testBranch],
 }
 
+/** Reports a problem of its own, which is what the `validate` slot is for. */
+export const testChecked: NodeDefinition = {
+  type: 'test.checked',
+  category: TEST_CATEGORY.id,
+  label: 'Test checked',
+  description: 'Reports its own problems',
+  icon: Circle,
+  hasInput: true,
+  outputs: [{ id: 'main' }],
+  paramsSchema: z.object({ ref: z.string().default('') }),
+  fields: [{ name: 'ref', label: 'Ref', widget: 'text' }],
+  validate: (params) =>
+    params.ref === 'gone'
+      ? [{ level: 'error', message: 'That thing is gone.' }]
+      : [],
+}
+
+/**
+ * Held out of `testPack` — other suites assert on how many nodes it has — and
+ * in a pack of its own, which also keeps a two-pack registry under test.
+ */
+export const checkedPack: NodePack = {
+  id: 'checked',
+  nodes: [testChecked],
+}
+
 /**
  * The registry is module-level state, so every test file has to install one
- * before touching anything that resolves a node type.
+ * before touching anything that resolves a node type. Extra packs are folded
+ * in alongside the fixtures, the way a third-party pack would be.
  */
-export function installTestRegistry() {
-  installNodeRegistry(createNodeRegistry([testPack]))
+export function installTestRegistry(...extra: NodePack[]) {
+  installNodeRegistry(createNodeRegistry([testPack, ...extra]))
 }
 
 interface NodeSpec {
