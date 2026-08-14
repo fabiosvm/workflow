@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  },
+  "overrides": [
+    // Vendored from shadcn: button/badge export their cva variants and sidebar
+    // exports useSidebar, each alongside components. This is suppression, not a
+    // fix — those files genuinely are not Fast Refresh friendly. Restructuring
+    // them is churn the next `npx shadcn add` would undo, so the rule is scoped
+    // off here instead. Our own code has no exemption.
+    {
+      "files": ["src/components/ui/**"],
+      "rules": {
+        "react/only-export-components": "off"
+      }
+    }
+  ]
+}

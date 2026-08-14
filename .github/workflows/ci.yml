@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same ref makes the run in flight irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # Single source of truth for the version. Node 18 cannot build this
+          # project at all: rolldown imports `styleText` from `node:util`, which
+          # only exists from Node 20 on.
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Cheapest feedback first. `build` runs `tsc -b` before Vite, so it is
+      # also the typecheck — and it covers the test files too.
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build

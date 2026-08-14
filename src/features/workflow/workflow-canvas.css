@@ -1,0 +1,95 @@
+/**
+ * Binds React Flow's theming to the shadcn design tokens.
+ *
+ * React Flow exposes its chrome through `--xy-*` custom properties, so pointing
+ * them at the shadcn variables makes the canvas, controls and minimap follow the
+ * active theme automatically — including the dark variant, with no JS involved.
+ */
+
+.react-flow {
+  --xy-background-color: var(--background);
+  --xy-edge-stroke: var(--muted-foreground);
+  --xy-edge-stroke-selected: var(--primary);
+  --xy-edge-stroke-width: 1.5;
+  --xy-connectionline-stroke: var(--primary);
+  --xy-connectionline-stroke-width: 1.5;
+
+  --xy-handle-background-color: var(--primary);
+  --xy-handle-border-color: var(--background);
+
+  --xy-selection-background-color: color-mix(in oklab, var(--primary) 8%, transparent);
+  --xy-selection-border: 1px dashed var(--primary);
+
+  --xy-attribution-background-color: color-mix(in oklab, var(--background) 70%, transparent);
+
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--accent);
+  --xy-controls-button-color: var(--card-foreground);
+  --xy-controls-button-color-hover: var(--accent-foreground);
+  --xy-controls-button-border-color: var(--border);
+
+  --xy-minimap-background-color: var(--card);
+  --xy-minimap-mask-background-color: color-mix(in oklab, var(--muted) 60%, transparent);
+  --xy-minimap-node-background-color: var(--muted-foreground);
+}
+
+/* Dot grid: React Flow renders it as an SVG pattern, styled via `fill`. */
+.react-flow__background-pattern {
+  fill: var(--border);
+}
+
+/* Match the rounded, bordered surface used by shadcn cards and popovers. */
+.react-flow__controls,
+.react-flow__minimap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  border-bottom: 1px solid var(--border);
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+.react-flow__attribution {
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.react-flow__attribution a {
+  color: var(--muted-foreground);
+}
+
+/*
+ * Nothing is drawn on top of a connection, so this emphasis is the only hint
+ * that the line can be acted on at all. React Flow already lays a 20px
+ * interaction band over each edge, so the click target is unchanged — only the
+ * feedback is.
+ *
+ * The colour alone does not carry it: `--primary` against `--muted-foreground`
+ * is a shift in lightness on a 1.5px dashed line, which is close to invisible
+ * at anything but full zoom. The extra weight is what makes the state legible,
+ * and hover and selected share it so the line does not change appearance
+ * between pointing at it and clicking it.
+ */
+.react-flow__edge:hover .react-flow__edge-path,
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+
+/* Custom nodes bring their own Card surface, so drop the default chrome. */
+.react-flow__node-workflow {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  width: auto;
+  font-size: inherit;
+  color: inherit;
+}
