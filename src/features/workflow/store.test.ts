@@ -210,3 +210,54 @@ describe('history limit', () => {
     expect(store().past).toHaveLength(50)
   })
 })
+
+describe('workflow metadata', () => {
+  it('dirties the workflow and folds typing into one history entry', () => {
+    vi.useFakeTimers()
+
+    store().updateWorkflowMeta({ name: 'R' })
+    vi.advanceTimersByTime(100)
+    store().updateWorkflowMeta({ name: 'Renamed' })
+
+    expect(store().workflow?.name).toBe('Renamed')
+    expect(store().isDirty).toBe(true)
+    expect(store().past).toHaveLength(1)
+  })
+
+  it('restores the previous name on undo', () => {
+    store().updateWorkflowMeta({ name: 'Renamed' })
+    store().undo()
+
+    expect(store().workflow?.name).toBe('Test workflow')
+
+    store().redo()
+
+    expect(store().workflow?.name).toBe('Renamed')
+  })
+
+  /**
+   * The graph and the metadata share one history, so undoing a rename must not
+   * roll the canvas back with it — and vice versa.
+   */
+  it('leaves the graph alone', () => {
+    store().updateWorkflowMeta({ description: 'A description' })
+
+    expect(store().nodes).toHaveLength(2)
+    expect(store().edges).toHaveLength(1)
+    expect(store().workflow?.description).toBe('A description')
+  })
+})
+
+describe('closeWorkflow', () => {
+  it('empties the editor and clears the history', () => {
+    store().onNodesChange([{ type: 'remove', id: 'a' }])
+    store().closeWorkflow()
+
+    expect(store().workflow).toBeNull()
+    expect(store().nodes).toEqual([])
+    expect(store().edges).toEqual([])
+    expect(store().isDirty).toBe(false)
+    expect(store().past).toEqual([])
+    expect(store().validation.all).toEqual([])
+  })
+})

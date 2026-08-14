@@ -38,7 +38,7 @@ import {
   type GraphValidation,
   EMPTY_VALIDATION,
 } from '@/features/workflow/validation'
-import type { Position, Workflow } from '@/types/workflow'
+import type { Position, Workflow, WorkflowMeta } from '@/types/workflow'
 
 /**
  * Selection and measurement changes are emitted constantly while interacting
@@ -59,6 +59,12 @@ function createId(prefix: string) {
 }
 
 interface Snapshot {
+  /**
+   * Carried alongside the graph because the name and description are edited in
+   * the header and are part of the same document — undoing a rename has to work
+   * like undoing anything else on the canvas.
+   */
+  workflow: Workflow | null
   nodes: WorkflowFlowNode[]
   edges: Edge[]
 }
@@ -121,11 +127,19 @@ interface WorkflowState {
   revision: number
 
   loadWorkflow: (workflow: Workflow) => void
+  /** Returns the editor to its empty state — the library has nothing to open. */
+  closeWorkflow: () => void
   onNodesChange: (changes: NodeChange<WorkflowFlowNode>[]) => void
   onEdgesChange: (changes: EdgeChange<Edge>[]) => void
   onConnect: (connection: Connection) => void
   addNode: (type: string, position: Position) => void
   updateNodeData: (id: string, patch: Partial<WorkflowNodeData>) => void
+  /**
+   * Name and description. They ride the same dirty flag and the same save as
+   * the graph, so renaming needs no endpoint of its own — `toWorkflow` spreads
+   * the workflow it is given.
+   */
+  updateWorkflowMeta: (patch: WorkflowMeta) => void
   /**
    * Checkpoints the current graph. Call it *before* mutating. Passing a tag
    * opts into coalescing; omitting it always creates an entry.
@@ -165,6 +179,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     get().revalidate()
   },
 
+  closeWorkflow: () => {
+    lastCommitTag = null
+    set({
+      workflow: null,
+      nodes: [],
+      edges: [],
+      isDirty: false,
+      validation: EMPTY_VALIDATION,
+      past: [],
+      future: [],
+    })
+  },
+
   commit: (tag) => {
     const now = Date.now()
 
@@ -177,16 +204,17 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     lastCommitAt = now
 
     set((state) => ({
-      past: [...state.past, { nodes: state.nodes, edges: state.edges }].slice(
-        -HISTORY_LIMIT,
-      ),
+      past: [
+        ...state.past,
+        { workflow: state.workflow, nodes: state.nodes, edges: state.edges },
+      ].slice(-HISTORY_LIMIT),
       // Any new edit invalidates the redo branch.
       future: [],
     }))
   },
 
   undo: () => {
-    const { past, nodes, edges, future, revision } = get()
+    const { past, workflow, nodes, edges, future, revision } = get()
     const previous = past.at(-1)
 
     if (!previous) {
@@ -195,10 +223,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
     lastCommitTag = null
     set({
+      workflow: previous.workflow,
       nodes: previous.nodes,
       edges: previous.edges,
       past: past.slice(0, -1),
-      future: [{ nodes, edges }, ...future],
+      future: [{ workflow, nodes, edges }, ...future],
       isDirty: true,
       revision: revision + 1,
     })
@@ -206,7 +235,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   redo: () => {
-    const { past, nodes, edges, future, revision } = get()
+    const { past, workflow, nodes, edges, future, revision } = get()
     const next = future[0]
 
     if (!next) {
@@ -215,9 +244,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
     lastCommitTag = null
     set({
+      workflow: next.workflow,
       nodes: next.nodes,
       edges: next.edges,
-      past: [...past, { nodes, edges }],
+      past: [...past, { workflow, nodes, edges }],
       future: future.slice(1),
       isDirty: true,
       revision: revision + 1,
@@ -322,6 +352,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       nodes: state.nodes.map((node) =>
         node.id === id ? { ...node, data: { ...node.data, ...patch } } : node,
       ),
+      isDirty: true,
+    }))
+  },
+
+  updateWorkflowMeta: (patch) => {
+    if (!get().workflow) {
+      return
+    }
+
+    get().commit(`meta:${Object.keys(patch).join(',')}`)
+
+    set((state) => ({
+      workflow: state.workflow ? { ...state.workflow, ...patch } : null,
       isDirty: true,
     }))
   },

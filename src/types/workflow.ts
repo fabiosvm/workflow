@@ -46,3 +46,6 @@ export interface Workflow {
 }
 
 export type WorkflowSummary = Pick<Workflow, 'id' | 'name' | 'description'>
+
+/** The fields edited in the header rather than on the canvas. */
+export type WorkflowMeta = Partial<Pick<Workflow, 'name' | 'description'>>
